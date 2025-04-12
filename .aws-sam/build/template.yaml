@@ -7,10 +7,10 @@ Resources:
       Name: DefaultEventBridgeRule
       EventBusName: default
       EventPattern:
-        Source:
-        - custom.app.event
-        DetailType:
+        detail-type:
         - executeLambda
+        source:
+        - custom.app.event
       Targets:
       - Arn:
           Fn::GetAtt:
@@ -54,3 +54,33 @@ Resources:
       Timeout: 10
     Metadata:
       SamResourceId: ReceiverLambda
+  EventBridgeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - ReceiverLambda
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - EventRule
+        - Arn
+Outputs:
+  TriggerApi:
+    Description: API Gateway endpoint URL for Prod stage
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/trigger
+  TriggerFunction:
+    Description: Trigger Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - TriggerLambda
+      - Arn
+  ReceiverFunction:
+    Description: Receiver Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - ReceiverLambda
+      - Arn

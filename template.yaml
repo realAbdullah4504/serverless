@@ -1,26 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
+Transform: AWS::Serverless-2016-10-31
 Resources:
   # EventBridge Rule to trigger the second Lambda when the event is received
   EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "DefaultEventBridgeRule"
-      EventBusName: "default"  # Using the default event bus
+      Name: DefaultEventBridgeRule
+      EventBusName: default # Using the default event bus
       EventPattern:
-        Source:
-          - "custom.app.event"  # Event source (can be anything)
-        DetailType:
-          - "executeLambda"  # Event detail type (can be anything)
+        detail-type: 
+          - executeLambda
+        source:
+          - custom.app.event
       Targets:
-        - Arn: !GetAtt ReceiverLambda.Arn  # The target Lambda function
-          Id: "ReceiverLambdaTarget"
-  
+        - Arn: !GetAtt ReceiverLambda.Arn # The target Lambda function
+          Id: ReceiverLambdaTarget
+
   # Lambda function to trigger the event and send to EventBridge
   TriggerLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./triggerLambda/  # Add this line to specify trigger function source
+      CodeUri: ./triggerLambda/ # Add this line to specify trigger function source
       Handler: app.handler
       Runtime: nodejs20.x
       MemorySize: 128
@@ -33,9 +33,9 @@ Resources:
             Method: post
       Environment:
         Variables:
-          EVENT_BUS_NAME: "default"  # Using default event bus
+          EVENT_BUS_NAME: default # Using default event bus
       Policies:
-        - Version: "2012-10-17"
+        - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
@@ -47,8 +47,32 @@ Resources:
   ReceiverLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./receiverLambda  # Add this line to specify receiver function source
+      CodeUri: ./receiverLambda # Add this line to specify receiver function source
       Handler: app.handler
       Runtime: nodejs20.x
       MemorySize: 128
       Timeout: 10
+  
+  # Add explicit permission for EventBridge to invoke Lambda
+  EventBridgeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ReceiverLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRule.Arn
+
+# ...existing code...
+
+Outputs:
+  TriggerApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/trigger"
+  
+  TriggerFunction:
+    Description: "Trigger Lambda Function ARN"
+    Value: !GetAtt TriggerLambda.Arn
+  
+  ReceiverFunction:
+    Description: "Receiver Lambda Function ARN"
+    Value: !GetAtt ReceiverLambda.Arn
